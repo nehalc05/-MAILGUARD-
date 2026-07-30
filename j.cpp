@@ -18,7 +18,15 @@ private:
     vector<string> urls;
 
 public:
-    // Setters
+    // Default Constructor
+    Email()
+    {
+        sender = "";
+        subject = "";
+        body = "";
+    }
+
+    // Setter Functions
     void setSender(string s)
     {
         sender = s;
@@ -39,7 +47,7 @@ public:
         urls.push_back(url);
     }
 
-    // Getters
+    // Getter Functions
     string getSender() const
     {
         return sender;
@@ -61,28 +69,72 @@ public:
     }
 };
 
-struct Report
+class Report
 {
-    int score = 100;
+private:
+    int score;
 
-    bool businessEmail = false;
-    bool freeProvider = false;
-    bool brandImpersonation = false;
+public:
 
-    bool hasHTTP = false;
-    bool hasHTTPS = false;
-    bool hasIP = false;
-    bool shortURL = false;
-    bool suspiciousTLD = false;
+    // Sender Analysis
+    bool businessEmail;
+    bool freeProvider;
+    bool brandImpersonation;
 
-    bool urgency = false;
-    bool prize = false;
-    bool credential = false;
-    bool promotion = false;
+    // URL Analysis
+    bool hasHTTP;
+    bool hasHTTPS;
+    bool hasIP;
+    bool shortURL;
+    bool suspiciousTLD;
+
+    // Content Analysis
+    bool urgency;
+    bool prize;
+    bool credential;
+    bool promotion;
 
     vector<string> reasons;
-};
 
+    // Constructor
+    Report()
+    {
+        score = 100;
+
+        businessEmail = false;
+        freeProvider = false;
+        brandImpersonation = false;
+
+        hasHTTP = false;
+        hasHTTPS = false;
+        hasIP = false;
+        shortURL = false;
+        suspiciousTLD = false;
+
+        urgency = false;
+        prize = false;
+        credential = false;
+        promotion = false;
+    }
+
+    void deductScore(int marks)
+    {
+        score -= marks;
+
+        if(score < 0)
+            score = 0;
+    }
+
+    int getScore() const
+    {
+        return score;
+    }
+
+    void addReason(string reason)
+    {
+        reasons.push_back(reason);
+    }
+};
 string toLower(string s)
 {
     transform(s.begin(), s.end(), s.begin(), ::tolower);
