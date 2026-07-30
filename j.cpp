@@ -9,12 +9,56 @@
 
 using namespace std;
 
-struct Email
+class Email
 {
+private:
     string sender;
     string subject;
     string body;
     vector<string> urls;
+
+public:
+    // Setters
+    void setSender(string s)
+    {
+        sender = s;
+    }
+
+    void setSubject(string s)
+    {
+        subject = s;
+    }
+
+    void appendBody(string line)
+    {
+        body += line + "\n";
+    }
+
+    void addURL(string url)
+    {
+        urls.push_back(url);
+    }
+
+    // Getters
+    string getSender() const
+    {
+        return sender;
+    }
+
+    string getSubject() const
+    {
+        return subject;
+    }
+
+    string getBody() const
+    {
+        return body;
+    }
+
+    vector<string>& getURLs()
+    {
+        return urls;
+    }
 };
 
 struct Report
