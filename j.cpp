@@ -6,18 +6,16 @@
 #include <regex>
 #include <set>
 #include <algorithm>
-
+#include <iomanip>
 using namespace std;
 
 class Email
 {
-private:
+public:
     string sender;
     string subject;
     string body;
     vector<string> urls;
-
-public:
     // Default Constructor
     Email()
     {
@@ -71,11 +69,8 @@ public:
 
 class Report
 {
-private:
-    int score;
-
 public:
-
+    int score;
     // Sender Analysis
     bool businessEmail;
     bool freeProvider;
@@ -270,76 +265,64 @@ void analyzeSender(Email &mail, Report &rep)
         }
     }
 }
-void analyzeURLs(Email &mail,Report &rep)
+vector<string> loadData(const string &filename);
+void analyzeURLs(Email &mail, Report &rep)
 {
     regex ip("(\\d+\\.\\d+\\.\\d+\\.\\d+)");
 
-    vector<string> shorteners={
-        "bit.ly",
-        "tinyurl",
-        "t.co",
-        "goo.gl",
-        "is.gd"
-    };
+    vector<string> shorteners = loadData("shortener.txt");
+    vector<string> badTLD = loadData("suspicious_tld.txt");
 
-    vector<string> badTLD={
-        ".xyz",
-        ".top",
-        ".click",
-        ".live",
-        ".site",
-        ".online"
-    };
-
-    for(string url:mail.urls)
+    for(string url : mail.urls)
     {
-        string u=toLower(url);
+        string lowerURL = toLower(url);
 
-        if(u.find("http://")==0)
+        if(lowerURL.find("http://") == 0)
         {
-            rep.hasHTTP=true;
-            rep.score-=5;
+            rep.hasHTTP = true;
+            rep.score -= 5;
             rep.reasons.push_back("Uses HTTP instead of HTTPS.");
         }
 
-        if(u.find("https://")==0)
-            rep.hasHTTPS=true;
+        if(lowerURL.find("https://") == 0)
+            rep.hasHTTPS = true;
 
-        if(regex_search(u,ip))
+        if(regex_search(lowerURL, ip))
         {
-            rep.hasIP=true;
-            rep.score-=25;
+            rep.hasIP = true;
+            rep.score -= 25;
             rep.reasons.push_back("Contains IP address URL.");
         }
 
-        for(string s:shorteners)
+        for(string site : shorteners)
         {
-            if(u.find(s)!=string::npos)
+            if(lowerURL.find(site) != string::npos)
             {
-                rep.shortURL=true;
-                rep.score-=10;
+                rep.shortURL = true;
+                rep.score -= 10;
                 rep.reasons.push_back("Uses shortened URL.");
+                break;
             }
         }
 
-        for(string t:badTLD)
+        for(string tld : badTLD)
         {
-            if(u.find(t)!=string::npos)
+            if(lowerURL.find(tld) != string::npos)
             {
-                rep.suspiciousTLD=true;
-                rep.score-=10;
+                rep.suspiciousTLD = true;
+                rep.score -= 10;
                 rep.reasons.push_back("Suspicious top-level domain.");
+                break;
             }
         }
     }
 
-    if(mail.urls.size()>3)
+    if(mail.urls.size() > 3)
     {
-        rep.score-=10;
+        rep.score -= 10;
         rep.reasons.push_back("Too many links in email.");
     }
 }
-
 vector<string> loadKeywords(const string &filename)
 {
     vector<string> keywords;
@@ -423,80 +406,56 @@ void analyzeContent(Email &mail, Report &rep)
 
     return "LIKELY PHISHING";
 }
-
+void printStatus(string title, bool status)
+{
+    cout << left << setw(25) << title
+         << (status ? "YES" : "NO") << endl;
+}
 void printReport(Email &mail, Report &rep)
 {
-    cout << "\n=====================================\n";
-    cout << "        MAILGUARD REPORT\n";
-    cout << "=====================================\n\n";
+    if(rep.score < 0)
+        rep.score = 0;
 
-    cout << "Sender : " << mail.sender << endl;
-    cout << "Subject: " << mail.subject << endl;
+    cout << "\n=========================================\n";
+    cout << "           MAILGUARD REPORT\n";
+    cout << "=========================================\n";
+
+    cout << "\nSender  : " << mail.sender;
+    cout << "\nSubject : " << mail.subject << endl;
 
     cout << "\n----------- Sender Analysis -----------\n";
 
-    if(rep.businessEmail)
-        cout << "Business Domain          : YES\n";
-    else
-        cout << "Business Domain          : NO\n";
-
-    if(rep.freeProvider)
-        cout << "Free Email Provider      : YES\n";
-    else
-        cout << "Free Email Provider      : NO\n";
-
-    if(rep.brandImpersonation)
-        cout << "Brand Impersonation      : YES\n";
-    else
-        cout << "Brand Impersonation      : NO\n";
-
+    printStatus("Business Domain", rep.businessEmail);
+    printStatus("Free Email", rep.freeProvider);
+    printStatus("Brand Impersonation", rep.brandImpersonation);
 
     cout << "\n----------- URL Analysis -----------\n";
 
     cout << "URLs Found : " << mail.urls.size() << endl;
 
     for(string url : mail.urls)
-        cout << "   " << url << endl;
+        cout << "- " << url << endl;
 
-    cout << "\nHTTP Used               : "
-         << (rep.hasHTTP ? "YES" : "NO") << endl;
+    cout << endl;
 
-    cout << "HTTPS Used              : "
-         << (rep.hasHTTPS ? "YES" : "NO") << endl;
-
-    cout << "IP Address URL          : "
-         << (rep.hasIP ? "YES" : "NO") << endl;
-
-    cout << "Shortened URL           : "
-         << (rep.shortURL ? "YES" : "NO") << endl;
-
-    cout << "Suspicious TLD          : "
-         << (rep.suspiciousTLD ? "YES" : "NO") << endl;
-
+    printStatus("HTTP Used", rep.hasHTTP);
+    printStatus("HTTPS Used", rep.hasHTTPS);
+    printStatus("IP Address URL", rep.hasIP);
+    printStatus("Shortened URL", rep.shortURL);
+    printStatus("Suspicious TLD", rep.suspiciousTLD);
 
     cout << "\n----------- Content Analysis -----------\n";
 
-    cout << "Urgency                 : "
-         << (rep.urgency ? "YES" : "NO") << endl;
+    printStatus("Urgency", rep.urgency);
+    printStatus("Prize / Reward", rep.prize);
+    printStatus("Credential Request", rep.credential);
+    printStatus("Promotion", rep.promotion);
 
-    cout << "Prize / Reward          : "
-         << (rep.prize ? "YES" : "NO") << endl;
-
-    cout << "Credential Request      : "
-         << (rep.credential ? "YES" : "NO") << endl;
-
-    cout << "Promotion               : "
-         << (rep.promotion ? "YES" : "NO") << endl;
-
-
-    if(rep.score < 0)
-        rep.score = 0;
-
-    cout << "\n=====================================\n";
+    cout << "\n=========================================\n";
     cout << "Trust Score : " << rep.score << "/100\n";
     cout << "Risk Level  : " << getRiskLevel(rep.score) << endl;
 
-    cout << "\nReasons:\n";
+    cout << "\nReasons\n";
 
     if(rep.reasons.empty())
     {
@@ -508,7 +467,7 @@ void printReport(Email &mail, Report &rep)
             cout << "- " << reason << endl;
     }
 
-    cout << "\nRecommendation:\n";
+    cout << "\nRecommendation\n";
 
     if(rep.score >= 90)
     {
@@ -528,41 +487,71 @@ void printReport(Email &mail, Report &rep)
         cout << "Verify the sender through an official website.\n";
     }
 
-    cout << "\n=====================================\n";
+    cout << "\n=========================================\n";
 }
 
 int main()
 {
-   Email mail;
-    Report report;
+    cout << "=========================================\n";
+    cout << "              MAILGUARD\n";
+    cout << "      Email Phishing Detection System\n";
+    cout << "=========================================\n\n";
 
-    cout << "Paste the complete email below.\n";
-    cout << "Type END on a new line when finished.\n\n";
+    cout << "Welcome to MailGuard!\n\n";
 
-    string line;
+    cout << "MailGuard is an email security tool designed to\n";
+    cout << "detect potential phishing emails by analyzing:\n\n";
 
-    while(getline(cin,line))
+    cout << " * Sender Information\n";
+    cout << " * URLs and Links\n";
+    cout << " * Email Content\n";
+    cout << " * Phishing Keywords\n";
+    cout << " * Trust Score and Risk Level\n\n";
+
+    cout << "The program generates a detailed security report\n";
+    cout << "to help users identify suspicious emails.\n\n";
+
+    cout << "=========================================\n";
+    cout << "Press 1 to Analyze an Email: ";
+
+    int choice;
+    cin >> choice;
+    cin.ignore();
+
+    if(choice == 1)
     {
-        if(line=="END")
-            break;
+        Email mail;
+        Report report;
 
-        if(line.rfind("From:",0)==0)
-            mail.sender=line.substr(5);
+        cout << "\nPaste the complete email below.\n";
+        cout << "Type END on a new line when finished.\n\n";
 
-        else if(line.rfind("Subject:",0)==0)
-            mail.subject=line.substr(8);
+        string line;
 
-        else
-            mail.body+=line+"\n";
+        while(getline(cin, line))
+        {
+            if(line == "END")
+                break;
+
+            if(line.rfind("From:", 0) == 0)
+                mail.sender = line.substr(5);
+            else if(line.rfind("Subject:", 0) == 0)
+                mail.subject = line.substr(8);
+            else
+                mail.body += line + "\n";
+        }
+
+        extractURLs(mail);
+        analyzeSender(mail, report);
+        analyzeURLs(mail, report);
+        analyzeContent(mail, report);
+
+        printReport(mail, report);
     }
-
-    extractURLs(mail);
-
-    analyzeSender(mail,report);
-    analyzeURLs(mail,report);
-    analyzeContent(mail,report);
-
-    printReport(mail,report);
+    else
+    {
+        cout << "\nInvalid Choice!\n";
+    }
 
     return 0;
 }

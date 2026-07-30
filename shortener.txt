@@ -1,0 +1,5 @@
+bit.ly
+tinyurl
+t.co
+goo.gl
+is.gd
