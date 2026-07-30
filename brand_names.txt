@@ -1,0 +1,8 @@
+amazon
+google
+paypal
+microsoft
+apple
+github
+flipkart
+netflix

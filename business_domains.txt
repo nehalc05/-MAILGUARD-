@@ -1,0 +1,8 @@
+amazon.com
+google.com
+paypal.com
+microsoft.com
+apple.com
+github.com
+flipkart.com
+netflix.com

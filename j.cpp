@@ -149,7 +149,7 @@ bool contains(string text, string key)
     return text.find(key) != string::npos;
 }
 
-Email readEmail(string filename)
+Email readEmail(const string &filename)
 {
     Email mail;
 
@@ -157,113 +157,119 @@ Email readEmail(string filename)
 
     if(!file)
     {
-        cout<<"Cannot open file\n";
-        exit(0);
+        cout << "Error: Unable to open " << filename << endl;
+        return mail;
     }
 
     string line;
-    bool bodyStart=false;
 
-    while(getline(file,line))
+    while(getline(file, line))
     {
-        if(line.rfind("From:",0)==0)
-        {
-            mail.sender=line.substr(5);
-        }
+        if(line.empty())
+            continue;
 
-        else if(line.rfind("Subject:",0)==0)
+        if(line.rfind("From:", 0) == 0)
         {
-            mail.subject=line.substr(8);
+            mail.sender = line.substr(6);
         }
-
+        else if(line.rfind("Subject:", 0) == 0)
+        {
+            mail.subject = line.substr(9);
+        }
         else
         {
-            mail.body+=line+"\n";
+            mail.body += line + "\n";
         }
     }
 
+    file.close();
+
     return mail;
 }
-
 void extractURLs(Email &mail)
 {
-    // Normal URLs
     regex url("(https?://[^\\s\"'>]+)");
-
-    auto begin=sregex_iterator(mail.body.begin(),mail.body.end(),url);
-    auto end=sregex_iterator();
-
-    for(auto i=begin;i!=end;i++)
-        mail.urls.push_back((*i).str());
-
-    // HTML href links
     regex href("<a[^>]*href=[\"']([^\"']+)[\"']");
 
-    auto hbegin=sregex_iterator(mail.body.begin(),mail.body.end(),href);
+    set<string> uniqueURLs;
 
-    for(auto i=hbegin;i!=end;i++)
-        mail.urls.push_back((*i)[1].str());
+    auto begin = sregex_iterator(mail.body.begin(), mail.body.end(), url);
+    auto end = sregex_iterator();
 
+    for(auto i = begin; i != end; i++)
+        uniqueURLs.insert((*i).str());
+
+    auto hbegin = sregex_iterator(mail.body.begin(), mail.body.end(), href);
+
+    for(auto i = hbegin; i != end; i++)
+        uniqueURLs.insert((*i)[1].str());
+
+    mail.urls.assign(uniqueURLs.begin(), uniqueURLs.end());
 }
 
-void analyzeSender(Email &mail,Report &rep)
+vector<string> loadData(const string &filename)
 {
-    string sender=toLower(mail.sender);
+    vector<string> data;
+    ifstream file(filename);
 
-    set<string> businesses={
-        "amazon.com",
-        "google.com",
-        "paypal.com",
-        "microsoft.com",
-        "apple.com",
-        "github.com",
-        "flipkart.com",
-        "netflix.com"
-    };
+    string line;
 
-    set<string> freeMail={
-        "gmail.com",
-        "yahoo.com",
-        "outlook.com",
-        "hotmail.com"
-    };
-
-    string domain="";
-
-    size_t pos=sender.find('@');
-
-    if(pos!=string::npos)
-        domain=sender.substr(pos+1);
-
-    if(businesses.count(domain))
-        rep.businessEmail=true;
-
-    if(freeMail.count(domain))
-        rep.freeProvider=true;
-
-    vector<string> brands={
-        "amazon",
-        "paypal",
-        "google",
-        "microsoft",
-        "apple",
-        "netflix",
-        "github",
-        "flipkart"
-    };
-
-    for(string b:brands)
+    while(getline(file, line))
     {
-        if(sender.find(b)!=string::npos && !rep.businessEmail)
+        if(!line.empty())
+            data.push_back(line);
+    }
+
+    file.close();
+    return data;
+}
+string getDomain(const string &sender)
+{
+    size_t pos = sender.find('@');
+
+    if(pos != string::npos)
+        return sender.substr(pos + 1);
+
+    return "";
+}
+void analyzeSender(Email &mail, Report &rep)
+{
+    string sender = toLower(mail.sender);
+    string domain = getDomain(sender);
+
+    vector<string> businessDomains = loadData("business_domains.txt");
+    vector<string> freeProviders = loadData("free_email.txt");
+    vector<string> brands = loadData("brand_names.txt");
+
+    for(string business : businessDomains)
+    {
+        if(domain == business)
         {
-            rep.brandImpersonation=true;
-            rep.score-=25;
+            rep.businessEmail = true;
+            break;
+        }
+    }
+
+    for(string provider : freeProviders)
+    {
+        if(domain == provider)
+        {
+            rep.freeProvider = true;
+            break;
+        }
+    }
+
+    for(string brand : brands)
+    {
+        if(sender.find(brand) != string::npos && !rep.businessEmail)
+        {
+            rep.brandImpersonation = true;
+            rep.score -= 25;
             rep.reasons.push_back("Possible brand impersonation.");
             break;
         }
     }
 }
-
 void analyzeURLs(Email &mail,Report &rep)
 {
     regex ip("(\\d+\\.\\d+\\.\\d+\\.\\d+)");
