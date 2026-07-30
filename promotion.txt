@@ -1,0 +1,5 @@
+sale
+discount
+offer
+buy now
+festival

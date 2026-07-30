@@ -334,86 +334,70 @@ void analyzeURLs(Email &mail,Report &rep)
     }
 }
 
-void analyzeContent(Email &mail,Report &rep)
+vector<string> loadKeywords(const string &filename)
 {
-    string text=toLower(mail.subject+" "+mail.body);
+    vector<string> keywords;
+    ifstream file(filename);
 
-    vector<string> urgency={
-        "urgent",
-        "immediately",
-        "today",
-        "act now",
-        "expires",
-        "within 24 hours"
-    };
+    string word;
 
-    vector<string> prize={
-        "winner",
-        "won",
-        "claim",
-        "gift",
-        "reward",
-        "cashback",
-        "voucher",
-        "congratulations"
-    };
-
-    vector<string> credential={
-        "password",
-        "otp",
-        "login",
-        "verify",
-        "credit card",
-        "bank account",
-        "pin"
-    };
-
-    vector<string> promotion={
-        "sale",
-        "discount",
-        "offer",
-        "buy now",
-        "festival"
-    };
-
-    for(string k:urgency)
+    while(getline(file, word))
     {
-        if(contains(text,k))
+        if(!word.empty())
+            keywords.push_back(word);
+    }
+
+    file.close();
+    return keywords;
+}
+
+void analyzeContent(Email &mail, Report &rep)
+{
+    string text = toLower(mail.subject + " " + mail.body);
+
+    vector<string> urgency = loadKeywords("urgency.txt");
+    vector<string> prize = loadKeywords("prize.txt");
+    vector<string> credential = loadKeywords("credential.txt");
+    vector<string> promotion = loadKeywords("promotion.txt");
+
+    for(string k : urgency)
+    {
+        if(contains(text, k))
         {
-            rep.urgency=true;
-            rep.score-=8;
+            rep.urgency = true;
+            rep.score -= 8;
             rep.reasons.push_back("Urgency language detected.");
             break;
         }
     }
 
-    for(string k:prize)
+    for(string k : prize)
     {
-        if(contains(text,k))
+        if(contains(text, k))
         {
-            rep.prize=true;
-            rep.score-=12;
+            rep.prize = true;
+            rep.score -= 12;
             rep.reasons.push_back("Prize or reward language detected.");
             break;
         }
     }
 
-    for(string k:credential)
+    for(string k : credential)
     {
-        if(contains(text,k))
+        if(contains(text, k))
         {
-            rep.credential=true;
-            rep.score-=15;
+            rep.credential = true;
+            rep.score -= 15;
             rep.reasons.push_back("Credential request detected.");
             break;
         }
     }
 
-    for(string k:promotion)
+    for(string k : promotion)
     {
-        if(contains(text,k))
+        if(contains(text, k))
         {
-            rep.promotion=true;
+            rep.promotion = true;
             break;
         }
     }
