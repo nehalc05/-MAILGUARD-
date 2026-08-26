@@ -278,11 +278,11 @@ void analyzeURLs(Email &mail, Report &rep)
         string lowerURL = toLower(url);
 
         if(lowerURL.find("http://") == 0)
-        {
+          {
             rep.hasHTTP = true;
-            rep.score -= 5;
+            rep.score -= 10;
             rep.reasons.push_back("Uses HTTP instead of HTTPS.");
-        }
+          }
 
         if(lowerURL.find("https://") == 0)
             rep.hasHTTPS = true;
@@ -354,7 +354,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.urgency = true;
-            rep.score -= 8;
+            rep.score -= 12;
             rep.reasons.push_back("Urgency language detected.");
             break;
         }
@@ -376,7 +376,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.credential = true;
-            rep.score -= 15;
+            rep.score -= 25;
             rep.reasons.push_back("Credential request detected.");
             break;
         }
