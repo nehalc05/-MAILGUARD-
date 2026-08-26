@@ -88,29 +88,36 @@ public:
     bool prize;
     bool credential;
     bool promotion;
+    bool threat;
+    bool financialRequest;
+    bool secrecy;
 
     vector<string> reasons;
 
     // Constructor
     Report()
-    {
-        score = 100;
+{
+    score = 100;
 
-        businessEmail = false;
-        freeProvider = false;
-        brandImpersonation = false;
+    businessEmail = false;
+    freeProvider = false;
+    brandImpersonation = false;
 
-        hasHTTP = false;
-        hasHTTPS = false;
-        hasIP = false;
-        shortURL = false;
-        suspiciousTLD = false;
+    hasHTTP = false;
+    hasHTTPS = false;
+    hasIP = false;
+    shortURL = false;
+    suspiciousTLD = false;
 
-        urgency = false;
-        prize = false;
-        credential = false;
-        promotion = false;
-    }
+    urgency = false;
+    prize = false;
+    credential = false;
+    promotion = false;
+
+    threat = false;
+    financialRequest = false;
+    secrecy = false;
+}
 
     void deductScore(int marks)
     {
@@ -268,50 +275,88 @@ void analyzeSender(Email &mail, Report &rep)
 vector<string> loadData(const string &filename);
 void analyzeURLs(Email &mail, Report &rep)
 {
-    regex ip("(\\d+\\.\\d+\\.\\d+\\.\\d+)");
+    regex ip(R"(^https?://(\d{1,3}\.){3}\d{1,3}([/:]|$))");
 
     vector<string> shorteners = loadData("shortener.txt");
     vector<string> badTLD = loadData("suspicious_tld.txt");
+
+    bool httpPenalty = false;
+    bool ipPenalty = false;
+    bool shortPenalty = false;
+    bool tldPenalty = false;
 
     for(string url : mail.urls)
     {
         string lowerURL = toLower(url);
 
+        // HTTP
         if(lowerURL.find("http://") == 0)
-          {
+        {
             rep.hasHTTP = true;
-            rep.score -= 10;
-            rep.reasons.push_back("Uses HTTP instead of HTTPS.");
-          }
 
+            if(!httpPenalty)
+            {
+                rep.score -= 7;
+                rep.reasons.push_back("Uses HTTP instead of HTTPS.");
+                httpPenalty = true;
+            }
+        }
+
+        // HTTPS
         if(lowerURL.find("https://") == 0)
+        {
             rep.hasHTTPS = true;
+        }
 
+        // IP address
         if(regex_search(lowerURL, ip))
         {
             rep.hasIP = true;
-            rep.score -= 25;
-            rep.reasons.push_back("Contains IP address URL.");
+
+            if(!ipPenalty)
+            {
+                rep.score -= 20;
+                rep.reasons.push_back("Uses an IP address instead of a domain name.");
+                ipPenalty = true;
+            }
         }
 
+        // URL shortener
         for(string site : shorteners)
         {
+            site = toLower(site);
+
             if(lowerURL.find(site) != string::npos)
             {
                 rep.shortURL = true;
-                rep.score -= 10;
-                rep.reasons.push_back("Uses shortened URL.");
+
+                if(!shortPenalty)
+                {
+                    rep.score -= 8;
+                    rep.reasons.push_back("Uses a URL shortening service.");
+                    shortPenalty = true;
+                }
+
                 break;
             }
         }
 
+        // Suspicious TLD
         for(string tld : badTLD)
         {
+            tld = toLower(tld);
+
             if(lowerURL.find(tld) != string::npos)
             {
                 rep.suspiciousTLD = true;
-                rep.score -= 10;
-                rep.reasons.push_back("Suspicious top-level domain.");
+
+                if(!tldPenalty)
+                {
+                    rep.score -= 10;
+                    rep.reasons.push_back("Uses a suspicious top-level domain.");
+                    tldPenalty = true;
+                }
+
                 break;
             }
         }
@@ -319,9 +364,12 @@ void analyzeURLs(Email &mail, Report &rep)
 
     if(mail.urls.size() > 3)
     {
-        rep.score -= 10;
-        rep.reasons.push_back("Too many links in email.");
+        rep.score -= 5;
+        rep.reasons.push_back("Email contains an unusually large number of links.");
     }
+
+    if(rep.score < 0)
+        rep.score = 0;
 }
 vector<string> loadKeywords(const string &filename)
 {
@@ -349,48 +397,143 @@ void analyzeContent(Email &mail, Report &rep)
     vector<string> credential = loadKeywords("credential.txt");
     vector<string> promotion = loadKeywords("promotion.txt");
 
+    // ---------------- URGENCY ----------------
+
     for(string k : urgency)
     {
         if(contains(text, k))
         {
             rep.urgency = true;
-            rep.score -= 12;
+            rep.score -= 10;
             rep.reasons.push_back("Urgency language detected.");
             break;
         }
     }
+
+    // ---------------- PRIZE ----------------
 
     for(string k : prize)
     {
         if(contains(text, k))
         {
             rep.prize = true;
-            rep.score -= 12;
+            rep.score -= 10;
             rep.reasons.push_back("Prize or reward language detected.");
             break;
         }
     }
+
+    // ---------------- CREDENTIAL ----------------
 
     for(string k : credential)
     {
         if(contains(text, k))
         {
             rep.credential = true;
-            rep.score -= 25;
-            rep.reasons.push_back("Credential request detected.");
+            rep.score -= 20;
+            rep.reasons.push_back("Request for credentials or authentication information detected.");
             break;
         }
     }
+
+    // ---------------- PROMOTION ----------------
 
     for(string k : promotion)
     {
         if(contains(text, k))
         {
             rep.promotion = true;
+
+            // Promotion alone is NOT suspicious.
             break;
         }
     }
-}string getRiskLevel(int score)
+
+    // ---------------- THREATS ----------------
+
+    vector<string> threats =
+    {
+        "account suspended",
+        "account blocked",
+        "account terminated",
+        "legal action",
+        "permanently suspended",
+        "failure to respond",
+        "will be suspended",
+        "will be blocked",
+        "will be terminated",
+        "police",
+        "lawsuit"
+    };
+
+    for(string k : threats)
+    {
+        if(contains(text, k))
+        {
+            rep.threat = true;
+            rep.score -= 12;
+            rep.reasons.push_back("Threatening or fear-based language detected.");
+            break;
+        }
+    }
+
+    // ---------------- FINANCIAL REQUEST ----------------
+
+    vector<string> financial =
+    {
+        "bank account",
+        "bank details",
+        "credit card",
+        "debit card",
+        "card number",
+        "account number",
+        "payment details",
+        "transfer money",
+        "make payment",
+        "financial information"
+    };
+
+    for(string k : financial)
+    {
+        if(contains(text, k))
+        {
+            rep.financialRequest = true;
+            rep.score -= 15;
+            rep.reasons.push_back("Request for financial information or payment detected.");
+            break;
+        }
+    }
+
+    // ---------------- CONFIDENTIALITY ----------------
+
+    vector<string> secrecyWords =
+    {
+        "do not share",
+        "don't share",
+        "keep this secret",
+        "keep this confidential",
+        "do not tell anyone",
+        "don't tell anyone"
+    };
+
+    for(string k : secrecyWords)
+    {
+        if(contains(text, k))
+        {
+            rep.secrecy = true;
+
+            // Confidentiality alone should not make an email phishing.
+            rep.score -= 3;
+
+            rep.reasons.push_back("Secrecy or confidentiality language detected.");
+            break;
+        }
+    }
+
+    if(rep.score < 0)
+        rep.score = 0;
+}
+string getRiskLevel(int score)
 {
     if(score >= 90)
         return "VERY SAFE";
