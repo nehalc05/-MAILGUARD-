@@ -132,10 +132,6 @@ public:
         return score;
     }
 
-    void addReason(string reason)
-    {
-        reasons.push_back(reason);
-    }
 };
 string toLower(string s)
 {
