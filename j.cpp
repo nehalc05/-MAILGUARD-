@@ -266,7 +266,7 @@ void analyzeSender(Email &mail, Report &rep)
         if(sender.find(brand) != string::npos && !rep.businessEmail)
         {
             rep.brandImpersonation = true;
-            rep.score -= 25;
+            rep.deductScore(25);
             rep.reasons.push_back("Possible brand impersonation.");
             break;
         }
@@ -296,7 +296,7 @@ void analyzeURLs(Email &mail, Report &rep)
 
             if(!httpPenalty)
             {
-                rep.score -= 7;
+                rep.deductScore(7);
                 rep.reasons.push_back("Uses HTTP instead of HTTPS.");
                 httpPenalty = true;
             }
@@ -315,7 +315,7 @@ void analyzeURLs(Email &mail, Report &rep)
 
             if(!ipPenalty)
             {
-                rep.score -= 20;
+                rep.deductScore(20);
                 rep.reasons.push_back("Uses an IP address instead of a domain name.");
                 ipPenalty = true;
             }
@@ -332,7 +332,7 @@ void analyzeURLs(Email &mail, Report &rep)
 
                 if(!shortPenalty)
                 {
-                    rep.score -= 8;
+                    rep.deductScore(8);
                     rep.reasons.push_back("Uses a URL shortening service.");
                     shortPenalty = true;
                 }
@@ -352,7 +352,7 @@ void analyzeURLs(Email &mail, Report &rep)
 
                 if(!tldPenalty)
                 {
-                    rep.score -= 10;
+                    rep.deductScore(10);
                     rep.reasons.push_back("Uses a suspicious top-level domain.");
                     tldPenalty = true;
                 }
@@ -364,12 +364,11 @@ void analyzeURLs(Email &mail, Report &rep)
 
     if(mail.urls.size() > 3)
     {
-        rep.score -= 5;
+        rep.deductScore(5);
         rep.reasons.push_back("Email contains an unusually large number of links.");
     }
 
-    if(rep.score < 0)
-        rep.score = 0;
+    
 }
 vector<string> loadKeywords(const string &filename)
 {
@@ -404,7 +403,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.urgency = true;
-            rep.score -= 10;
+            rep.deductScore(10);
             rep.reasons.push_back("Urgency language detected.");
             break;
         }
@@ -417,7 +416,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.prize = true;
-            rep.score -= 10;
+            rep.deductScore(10);
             rep.reasons.push_back("Prize or reward language detected.");
             break;
         }
@@ -430,7 +429,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.credential = true;
-            rep.score -= 20;
+            rep.deductScore(20);
             rep.reasons.push_back("Request for credentials or authentication information detected.");
             break;
         }
@@ -471,7 +470,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.threat = true;
-            rep.score -= 12;
+            rep.deductScore(12);
             rep.reasons.push_back("Threatening or fear-based language detected.");
             break;
         }
@@ -498,7 +497,7 @@ void analyzeContent(Email &mail, Report &rep)
         if(contains(text, k))
         {
             rep.financialRequest = true;
-            rep.score -= 15;
+            rep.deductScore(15);
             rep.reasons.push_back("Request for financial information or payment detected.");
             break;
         }
@@ -523,15 +522,14 @@ void analyzeContent(Email &mail, Report &rep)
             rep.secrecy = true;
 
             // Confidentiality alone should not make an email phishing.
-            rep.score -= 3;
+            rep.deductScore(3);
 
             rep.reasons.push_back("Secrecy or confidentiality language detected.");
             break;
         }
     }
 
-    if(rep.score < 0)
-        rep.score = 0;
+   
 }
 string getRiskLevel(int score)
 {
